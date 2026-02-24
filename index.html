@@ -372,6 +372,16 @@ mainContainer.addEventListener('click', (e) => {
     }
     lastClick = now;
 });
+// === GANTI NAMA TAMU DARI LINK ===
+const urlParams = new URLSearchParams(window.location.search);
+const guestName = urlParams.get('to');
+
+if (guestName) {
+  const recipientElement = document.querySelector('.recipient-name');
+  if (recipientElement) {
+    recipientElement.innerText = decodeURIComponent(guestName);
+  }
+} 
 </script>
 </body>
 </html>
