@@ -321,42 +321,79 @@ document.getElementById("open-invitation").onclick = function(e){
     setTimeout(() => { document.getElementById("couple").scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
 };
 
-let totalTamu = 1;
-let totalHadir = 1;
-let totalTidak = 0;
+// --- KONFIGURASI FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCeBaCj_hBgr1dE2EBdATttNgItqoocPGI",
+  authDomain: "undangan-shanum-arka.firebaseapp.com",
+  projectId: "undangan-shanum-arka",
+  storageBucket: "undangan-shanum-arka.firebasestorage.app",
+  messagingSenderId: "434126453833",
+  appId: "1:434126453833:web:37d20eaa439881f2ae9398"
+};
 
-document.getElementById("sendBtn").onclick = function() {
+// Inisialisasi Firebase Compat (Pastikan sudah panggil script SDK di HTML)
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// --- LOGIKA KIRIM UCAPAN ---
+document.getElementById("sendBtn").onclick = async function() {
     const name = document.getElementById("inputName").value;
     const msg = document.getElementById("inputMessage").value;
     const isHadir = document.getElementById("hadirYa").checked;
-    const statusText = isHadir ? "✓ Hadir" : "✘ Tidak Hadir";
+    const statusText = isHadir ? "Hadir" : "Tidak Hadir";
 
-    if(name && msg) {
-        totalTamu++;
-        if(isHadir) totalHadir++; else totalTidak++;
-        
-        document.getElementById("statTotal").innerText = totalTamu;
-        document.getElementById("statHadir").innerText = totalHadir;
-        document.getElementById("statTidak").innerText = totalTidak;
+    if (name && msg) {
+        try {
+            await db.collection("ucapan").add({
+                nama: name,
+                pesan: msg,
+                status: statusText,
+                waktu: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            document.getElementById("inputName").value = "";
+            document.getElementById("inputMessage").value = "";
+            alert("Ucapan Terkirim!");
+        } catch (error) {
+            console.error("Error mengirim:", error);
+            alert("Gagal mengirim, cek koneksi/rules database.");
+        }
+    } else {
+        alert("Mohon isi Nama dan Ucapan.");
+    }
+};
 
-        const list = document.getElementById("comments-list");
+// --- LOGIKA TAMPIL LIVE & STATISTIK ---
+db.collection("ucapan").orderBy("waktu", "desc").onSnapshot((snapshot) => {
+    const list = document.getElementById("comments-list");
+    list.innerHTML = ""; // Bersihkan list
+
+    let tTamu = 0;
+    let tHadir = 0;
+    let tTidak = 0;
+
+    snapshot.forEach((doc) => {
+        const data = doc.data();
+        tTamu++;
+        if (data.status === "Hadir") tHadir++; else tTidak++;
+
         const newItem = document.createElement("div");
         newItem.className = "comment-item";
         newItem.innerHTML = `
             <div class="sender-info">
-                <strong>${name}</strong>
-                <span class="status-badge">${statusText}</span>
+                <strong>${data.nama}</strong>
+                <span class="status-badge">${data.status === "Hadir" ? "✓ Hadir" : "x Tidak Hadir"}</span>
             </div>
-            <p>${msg}</p>
+            <p>${data.pesan}</p>
         `;
-        list.prepend(newItem);
-        
-        document.getElementById("inputName").value = "";
-        document.getElementById("inputMessage").value = "";
-        
-        alert("Ucapan Terkirim!");
-    } else { alert("Mohon isi Nama dan Ucapan."); }
-};
+        list.appendChild(newItem);
+    });
+
+    // Update Statistik Otomatis
+    document.getElementById("statTotal").innerText = tTamu;
+    document.getElementById("statHadir").innerText = tHadir;
+    document.getElementById("statTidak").innerText = tTidak;
+});
+
 
 let lastClick = 0;
 mainContainer.addEventListener('click', (e) => {
